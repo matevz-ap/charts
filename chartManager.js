@@ -61,6 +61,17 @@ export function createChart(chartContainer, onEditClick, chartData = null) {
     // Generate unique ID for this chart
     const chartId = chartData?.id || `chartJsCanvas_${chartCounter++}`;
     
+    // Helper function to convert hex to rgba
+    const hexToRgba = (hex, alpha = 1) => {
+        if (!hex || !hex.startsWith('#')) {
+            return hex || `rgba(0, 123, 255, ${alpha})`;
+        }
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
     // Use provided data or defaults
     const config = chartData ? {
         type: chartData.type || defaultChartConfig.type,
@@ -68,7 +79,14 @@ export function createChart(chartContainer, onEditClick, chartData = null) {
             labels: chartData.labels || defaultChartConfig.data.labels,
             datasets: [{
                 ...defaultChartConfig.data.datasets[0],
-                data: chartData.data || defaultChartConfig.data.datasets[0].data
+                data: chartData.data || defaultChartConfig.data.datasets[0].data,
+                // Apply saved colors if available, otherwise use defaults
+                backgroundColor: chartData.colors && chartData.colors.length > 0
+                    ? chartData.colors.map(hex => hexToRgba(hex, 0.2))
+                    : defaultChartConfig.data.datasets[0].backgroundColor,
+                borderColor: chartData.colors && chartData.colors.length > 0
+                    ? chartData.colors.map(hex => hexToRgba(hex, 1))
+                    : defaultChartConfig.data.datasets[0].borderColor
             }]
         },
         options: {
@@ -120,12 +138,34 @@ export function createChart(chartContainer, onEditClick, chartData = null) {
     // Store chart instance for editing
     chartInstances[chartId] = chartInstance;
 
+    // Extract colors from config if available (convert rgba to hex for storage)
+    const rgbaToHex = (color) => {
+        if (!color || color.startsWith('#')) return color || '#007bff';
+        const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+        if (rgbaMatch) {
+            const r = parseInt(rgbaMatch[1], 10);
+            const g = parseInt(rgbaMatch[2], 10);
+            const b = parseInt(rgbaMatch[3], 10);
+            return '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+        return '#007bff';
+    };
+
+    const backgroundColor = config.data.datasets[0].backgroundColor || [];
+    const colors = backgroundColor.length > 0 
+        ? backgroundColor.map(rgbaToHex)
+        : (chartData?.colors || []);
+
     // Save to local storage
     const chartStorageData = {
         id: chartId,
         type: config.type,
         labels: config.data.labels,
         data: config.data.datasets[0].data,
+        colors: colors,
         title: config.options.plugins?.title?.text || '',
         position: {
             top: wrapper.style.top,
@@ -158,11 +198,15 @@ export function updateChartPosition(chartId, top, left) {
     const width = parseInt(computedStyle.width, 10);
     const height = parseInt(computedStyle.height, 10);
     
+    // Extract colors from chart instance
+    const colors = extractColorsFromChart(chartInstance);
+    
     const chartData = {
         id: chartId,
         type: chartInstance.config.type,
         labels: chartInstance.data.labels,
         data: chartInstance.data.datasets[0]?.data || [],
+        colors: colors,
         title: chartInstance.options.plugins?.title?.text || '',
         position: { top, left },
         size: { width, height }
@@ -177,11 +221,15 @@ export function updateChartSize(chartId, width, height) {
     const wrapper = document.querySelector(`[data-chart-id="${chartId}"]`);
     if (!wrapper) return;
     
+    // Extract colors from chart instance
+    const colors = extractColorsFromChart(chartInstance);
+    
     const chartData = {
         id: chartId,
         type: chartInstance.config.type,
         labels: chartInstance.data.labels,
         data: chartInstance.data.datasets[0]?.data || [],
+        colors: colors,
         title: chartInstance.options.plugins?.title?.text || '',
         position: {
             top: wrapper.style.top,
@@ -190,6 +238,38 @@ export function updateChartSize(chartId, width, height) {
         size: { width, height }
     };
     saveChart(chartId, chartData);
+}
+
+// Helper function to extract colors from chart instance
+function extractColorsFromChart(chartInstance) {
+    // First check if we have saved colors from the editor
+    if (chartInstance._savedColors && Array.isArray(chartInstance._savedColors)) {
+        return chartInstance._savedColors;
+    }
+    
+    // Otherwise, extract from backgroundColor array (convert rgba to hex)
+    const backgroundColor = chartInstance.data.datasets[0]?.backgroundColor || [];
+    if (backgroundColor.length === 0) {
+        return [];
+    }
+    
+    const rgbaToHex = (color) => {
+        if (!color) return '#007bff';
+        if (color.startsWith('#')) return color;
+        const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+        if (rgbaMatch) {
+            const r = parseInt(rgbaMatch[1], 10);
+            const g = parseInt(rgbaMatch[2], 10);
+            const b = parseInt(rgbaMatch[3], 10);
+            return '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+        return '#007bff';
+    };
+    
+    return backgroundColor.map(rgbaToHex);
 }
 
 export function updateChartData(chartId) {
@@ -203,11 +283,15 @@ export function updateChartData(chartId) {
     const width = parseInt(computedStyle.width, 10);
     const height = parseInt(computedStyle.height, 10);
 
+    // Extract colors from chart instance
+    const colors = extractColorsFromChart(chartInstance);
+
     const chartData = {
         id: chartId,
         type: chartInstance.config.type,
         labels: chartInstance.data.labels,
         data: chartInstance.data.datasets[0]?.data || [],
+        colors: colors,
         title: chartInstance.options.plugins?.title?.text || '',
         position: {
             top: wrapper.style.top,
@@ -216,6 +300,11 @@ export function updateChartData(chartId) {
         size: { width, height }
     };
     saveChart(chartId, chartData);
+    
+    // Clear the saved colors after saving
+    if (chartInstance._savedColors) {
+        delete chartInstance._savedColors;
+    }
 }
 
 export function getChartInstance(chartId) {

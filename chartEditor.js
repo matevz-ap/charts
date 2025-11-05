@@ -57,6 +57,7 @@ export function openEditPanel(chartId) {
                     <tr>
                         <th>Label</th>
                         <th>Value</th>
+                        <th>Color</th>
                         <th><button type="button" id="addDataRowBtn" class="add-row-btn mb-0">+</button></th>
                     </tr>
                 </thead>
@@ -92,21 +93,22 @@ export function openEditPanel(chartId) {
     tableBody.innerHTML = '';
     const labels = chartInstance.data.labels || [];
     const data = chartInstance.data.datasets[0]?.data || [];
+    const colors = chartInstance.data.datasets[0]?.backgroundColor || [];
     
     // Create rows for existing data
-    const maxLength = Math.max(labels.length, data.length);
+    const maxLength = Math.max(labels.length, data.length, colors.length);
     for (let i = 0; i < maxLength; i++) {
-        addDataRow(tableBody, labels[i] || '', data[i] || '');
+        addDataRow(tableBody, labels[i] || '', data[i] || '', colors[i] || '');
     }
     
     // If no data, add one empty row
     if (maxLength === 0) {
-        addDataRow(tableBody, '', '');
+        addDataRow(tableBody, '', '', '');
     }
     
     // Add row button handler
     document.getElementById('addDataRowBtn').addEventListener('click', function() {
-        addDataRow(tableBody, '', '');
+        addDataRow(tableBody, '', '', '');
     });
 
     // Get current title if it exists
@@ -161,7 +163,7 @@ function downloadChartAsImage(chartId) {
     document.body.removeChild(link);
 }
 
-function addDataRow(tableBody, label = '', value = '') {
+function addDataRow(tableBody, label = '', value = '', color = '') {
     const row = document.createElement('tr');
     
     // Create label input
@@ -183,6 +185,22 @@ function addDataRow(tableBody, label = '', value = '') {
     valueInput.step = 'any';
     valueCell.appendChild(valueInput);
     
+    // Create color input
+    const colorCell = document.createElement('td');
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.className = 'data-color-input';
+    // Convert rgba/rgb to hex if needed, otherwise use default or provided color
+    if (color) {
+        // Handle rgba/rgb colors by converting to hex
+        const hexColor = rgbaToHex(color) || color;
+        colorInput.value = hexColor;
+    } else {
+        // Default color if none provided
+        colorInput.value = '#007bff';
+    }
+    colorCell.appendChild(colorInput);
+    
     // Create remove button cell
     const removeCell = document.createElement('td');
     const removeBtn = document.createElement('button');
@@ -193,7 +211,7 @@ function addDataRow(tableBody, label = '', value = '') {
         row.remove();
         // Ensure at least one row exists
         if (tableBody.children.length === 0) {
-            addDataRow(tableBody, '', '');
+            addDataRow(tableBody, '', '', '');
         }
     });
     removeCell.appendChild(removeBtn);
@@ -201,8 +219,46 @@ function addDataRow(tableBody, label = '', value = '') {
     // Assemble row
     row.appendChild(labelCell);
     row.appendChild(valueCell);
+    row.appendChild(colorCell);
     row.appendChild(removeCell);
     tableBody.appendChild(row);
+}
+
+// Helper function to convert rgba/rgb to hex
+function rgbaToHex(color) {
+    if (!color) return null;
+    
+    // If already hex, return as is
+    if (color.startsWith('#')) {
+        return color;
+    }
+    
+    // Handle rgba/rgb format
+    const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+    if (rgbaMatch) {
+        const r = parseInt(rgbaMatch[1], 10);
+        const g = parseInt(rgbaMatch[2], 10);
+        const b = parseInt(rgbaMatch[3], 10);
+        return '#' + [r, g, b].map(x => {
+            const hex = x.toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        }).join('');
+    }
+    
+    return null;
+}
+
+// Helper function to convert hex to rgba
+function hexToRgba(hex, alpha = 1) {
+    if (!hex || !hex.startsWith('#')) {
+        return hex || 'rgba(0, 123, 255, ' + alpha + ')';
+    }
+    
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function applyChartChanges(chartId) {
@@ -216,21 +272,25 @@ function applyChartChanges(chartId) {
     // Update chart type
     chartInstance.config.type = typeSelect.value;
 
-    // Read labels and data from table
+    // Read labels, data, and colors from table
     const rows = tableBody.querySelectorAll('tr');
     const labels = [];
     const data = [];
+    const colors = [];
     
     rows.forEach(row => {
         const labelInput = row.querySelector('.data-label-input');
         const valueInput = row.querySelector('.data-value-input');
+        const colorInput = row.querySelector('.data-color-input');
         const label = labelInput ? labelInput.value.trim() : '';
         const value = valueInput ? parseFloat(valueInput.value) : NaN;
+        const color = colorInput ? colorInput.value : '';
         
         // Only add if both label and value are provided
         if (label && !isNaN(value)) {
             labels.push(label);
             data.push(value);
+            colors.push(color || '#007bff');
         }
     });
 
@@ -238,6 +298,11 @@ function applyChartChanges(chartId) {
     chartInstance.data.labels = labels;
     if (chartInstance.data.datasets[0]) {
         chartInstance.data.datasets[0].data = data;
+        // Update colors - convert hex to rgba for better compatibility
+        chartInstance.data.datasets[0].backgroundColor = colors.map(hex => hexToRgba(hex, 0.2));
+        chartInstance.data.datasets[0].borderColor = colors.map(hex => hexToRgba(hex, 1));
+        // Store hex colors for saving to storage
+        chartInstance._savedColors = colors;
     }
 
     // Update title if provided
