@@ -18,12 +18,12 @@ export function makeDraggable(wrapper, chartContainer, chartId, onEditClick) {
         if (activeChartId !== chartId) return;
         if (startX === undefined || startY === undefined) return;
         
-        // Check if mouse has moved significantly (more than 5px)
+        // Check if mouse has moved significantly (more than 8px to avoid accidental drags)
         const moveDistance = Math.sqrt(
             Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2)
         );
         
-        if (moveDistance > 5) {
+        if (moveDistance > 8) {
             hasMoved = true;
             if (!isDragging) {
                 isDragging = true;
@@ -59,18 +59,19 @@ export function makeDraggable(wrapper, chartContainer, chartId, onEditClick) {
     const handleMouseUp = function(e) {
         if (activeChartId !== chartId) return;
         
+        // Check if this was a click (no drag) or a drag
+        const wasClick = !isDragging && !hasMoved;
+        
         if (isDragging) {
+            // Was dragging - save position and don't open edit panel
             isDragging = false;
             wrapper.classList.remove('dragging');
             document.body.style.userSelect = '';
             // Save position to local storage
             updateChartPosition(chartId, wrapper.style.top, wrapper.style.left);
-        } else if (!hasMoved && onEditClick) {
-            // If no significant movement, treat as click and open edit panel
-            onEditClick(chartId);
         }
         
-        // Reset
+        // Reset state
         startX = undefined;
         startY = undefined;
         hasMoved = false;
@@ -84,6 +85,11 @@ export function makeDraggable(wrapper, chartContainer, chartId, onEditClick) {
                 document.removeEventListener('mouseup', activeHandlers.up);
                 activeHandlers = null;
             }
+        }
+        
+        // If it was a click (no drag), open the edit panel
+        if (wasClick && onEditClick) {
+            onEditClick(chartId);
         }
     };
 

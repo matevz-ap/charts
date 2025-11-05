@@ -325,3 +325,33 @@ html {
     background: #5a6268;
 }
 
+#editPanelContent {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 50px);
+}
+
+.edit-panel-content-inner {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 24px);
+}
+
+.edit-panel-content-inner-inner {
+    position: relative;
+    overflow-y: auto;
+    height: calc(100% - 60px);
+}
+
+.actions-container {
+    position: absolute;
+    bottom: 12px;
+    background-color: #fff;
+    width: 100%;
+}
+
+.actions {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
