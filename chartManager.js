@@ -52,7 +52,8 @@ const defaultChartConfig = {
             y: {
                 beginAtZero: true
             }
-        }
+        },
+        maintainAspectRatio: false,
     }
 };
 
@@ -105,7 +106,13 @@ export function createChart(chartContainer, onEditClick, chartData = null) {
     chartCanvas.height = height;
     wrapper.appendChild(chartCanvas);
 
-    chartContainer.appendChild(wrapper);
+    // Append to content wrapper if it exists (for pan/zoom), otherwise to container
+    const contentWrapper = chartContainer.querySelector('.chart-container-content');
+    if (contentWrapper) {
+        contentWrapper.appendChild(wrapper);
+    } else {
+        chartContainer.appendChild(wrapper);
+    }
 
     // Create Chart.js Chart
     const chartInstance = new Chart(chartCanvas, config);

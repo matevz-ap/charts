@@ -6,12 +6,16 @@ import { makeDraggable } from './dragHandler.js';
 import { makeResizable } from './resizeHandler.js';
 import { openEditPanel, closeEditPanel } from './chartEditor.js';
 import { loadCharts } from './storage.js';
+import { initializeContainerPanZoom } from './containerPanZoom.js';
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     const chartContainer = document.getElementById('chartContainer');
     const addChartBtn = document.getElementById('addChartBtn');
     const closeEditPanelBtn = document.getElementById('closeEditPanel');
+    
+    // Initialize container pan and zoom
+    initializeContainerPanZoom(chartContainer);
 
     // Load saved charts from local storage
     const savedCharts = loadCharts();

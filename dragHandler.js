@@ -2,6 +2,7 @@
 // Handles drag functionality for chart elements
 
 import { updateChartPosition } from './chartManager.js';
+import { getTransformState } from './containerPanZoom.js';
 
 // Global tracking for active chart
 let activeChartId = null;
@@ -32,13 +33,24 @@ export function makeDraggable(wrapper, chartContainer, chartId, onEditClick) {
         }
         
         if (isDragging) {
-            // Restrict to within chartContainer bounds
-            const containerRect = chartContainer.getBoundingClientRect();
-            let newLeft = e.clientX - containerRect.left - offsetX;
-            let newTop = e.clientY - containerRect.top - offsetY;
-            // Clamp if needed
-            newLeft = Math.max(0, Math.min(newLeft, chartContainer.clientWidth - wrapper.offsetWidth));
-            newTop = Math.max(0, Math.min(newTop, chartContainer.clientHeight - wrapper.offsetHeight));
+            // Get the content wrapper (if it exists for pan/zoom)
+            const contentWrapper = chartContainer.querySelector('.chart-container-content');
+            const targetContainer = contentWrapper || chartContainer;
+            
+            // Get transform state from content wrapper if it exists
+            const { panX, panY, zoom } = getTransformState(contentWrapper);
+            
+            // Calculate position in content wrapper's coordinate system
+            const containerRect = targetContainer.getBoundingClientRect();
+            // Convert mouse position to content wrapper's local coordinates
+            const localX = (e.clientX - containerRect.left - panX) / zoom;
+            const localY = (e.clientY - containerRect.top - panY) / zoom;
+            
+            // offsetX and offsetY are already in local coordinates
+            let newLeft = localX - offsetX;
+            let newTop = localY - offsetY;
+            
+            // Allow charts to be moved anywhere (no bounds clamping)
             wrapper.style.left = `${newLeft}px`;
             wrapper.style.top = `${newTop}px`;
         }
@@ -81,6 +93,11 @@ export function makeDraggable(wrapper, chartContainer, chartId, onEditClick) {
             return;
         }
         
+        // Don't start dragging if middle mouse button (used for panning)
+        if (e.button === 1) {
+            return;
+        }
+        
         // Clear any previous active chart
         if (activeChartId && activeChartId !== chartId && activeHandlers) {
             document.removeEventListener('mousemove', activeHandlers.move);
@@ -98,8 +115,22 @@ export function makeDraggable(wrapper, chartContainer, chartId, onEditClick) {
         startY = e.clientY;
         hasMoved = false;
         isDragging = false;
-        offsetX = e.clientX - wrapper.getBoundingClientRect().left;
-        offsetY = e.clientY - wrapper.getBoundingClientRect().top;
+        
+        // Calculate offset accounting for zoom/pan transform
+        const contentWrapper = chartContainer.querySelector('.chart-container-content');
+        const { panX, panY, zoom } = getTransformState(contentWrapper);
+        
+        const targetContainer = contentWrapper || chartContainer;
+        const containerRect = targetContainer.getBoundingClientRect();
+        const localX = (e.clientX - containerRect.left - panX) / zoom;
+        const localY = (e.clientY - containerRect.top - panY) / zoom;
+        
+        // Get chart's current position in local coordinates (from style, not viewport)
+        const chartLeft = parseFloat(wrapper.style.left) || 0;
+        const chartTop = parseFloat(wrapper.style.top) || 0;
+        
+        offsetX = localX - chartLeft;
+        offsetY = localY - chartTop;
         
         // Add document listeners
         document.addEventListener('mousemove', handleMouseMove);

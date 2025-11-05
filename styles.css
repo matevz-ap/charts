@@ -5,12 +5,21 @@
     margin-bottom: 16px;
     width: 100%;
     height: 100%;
+    overflow: visible;
     /* Add dotted background using CSS */
     background-repeat: repeat !important;
     background-color: #fff;
     background-image: radial-gradient(#eee 1.2px, transparent 1.2px);
     background-size: 24px 24px, 24px 24px;
     background-position: 0 0, 12px 12px;
+}
+
+.chart-container-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    will-change: transform;
+    transition: transform 0.1s ease-out;
 }
 
 .mb-0 {
