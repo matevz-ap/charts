@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="styles.css">
+    <link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
+>
+<style>
+    :root {
+    --pico-border-radius: 6px;
+    --pico-typography-spacing-vertical: 1.5rem;
+    --pico-font-size: 90%;
+    --pico-form-element-spacing-vertical: 0.5rem;
+    --pico-form-element-spacing-horizontal: 1rem;
+}
+
+[data-theme=light],
+:root:not([data-theme=dark]) {
+    --pico-primary: #007bff;
+    --pico-primary-background: #007bff;
+}
+</style>
+</head>
+<body>
+    <button id="addChartBtn">Add Chart</button>
+    <div id="chartContainer"></div>
+    <div id="editPanel" class="edit-panel">
+        <button class="close-btn outline contrast" id="closeEditPanel"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="24" height="24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+          </button>
+        <h3>Edit Chart</h3>
+        <div id="editPanelContent">
+            <!-- Chart editing controls will be inserted here -->
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
