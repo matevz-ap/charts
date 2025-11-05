@@ -36,7 +36,7 @@ export function openEditPanel(chartId) {
     // Create editing controls
     editPanelContent.innerHTML = `
         <div class="form-group">
-            <label><strong>Chart Type:</strong></label><br>
+            <label><strong>Chart Type:</strong></label>
             <select id="chartTypeSelect">
                 <option value="bar" ${chartInstance.config.type === 'bar' ? 'selected' : ''}>Bar</option>
                 <option value="line" ${chartInstance.config.type === 'line' ? 'selected' : ''}>Line</option>
@@ -45,7 +45,7 @@ export function openEditPanel(chartId) {
             </select>
         </div>
         <div class="form-group">
-            <label><strong>Chart Title:</strong></label><br>
+            <label><strong>Chart Title:</strong></label>
             <input type="text" id="chartTitleInput" placeholder="Chart Title">
         </div>
         <div class="form-group">
@@ -55,7 +55,7 @@ export function openEditPanel(chartId) {
                     <tr>
                         <th>Label</th>
                         <th>Value</th>
-                        <th><button type="button" id="addDataRowBtn" class="add-row-btn">+</button></th>
+                        <th><button type="button" id="addDataRowBtn" class="add-row-btn mb-0">+</button></th>
                     </tr>
                 </thead>
                 <tbody id="chartDataTableBody">

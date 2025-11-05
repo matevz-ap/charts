@@ -13,6 +13,10 @@
     background-position: 0 0, 12px 12px;
 }
 
+.mb-0 {
+    margin-bottom: 0 !important;
+}
+
 .draggable-chart {
     position: absolute;
     top: 30px;

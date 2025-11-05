@@ -43,13 +43,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const isClickOnChart = e.target.closest('.draggable-chart');
         const isClickInsidePanel = editPanel && editPanel.contains(e.target);
         const isClickOnCloseBtn = e.target.id === 'closeEditPanel' || e.target.closest('#closeEditPanel');
+        const isClickOnRemovreRowBtn = e.target.classList.contains('remove-row-btn');
         const isClickOnAddBtn = e.target === addChartBtn || e.target.closest('#addChartBtn');
         
         // Check if click is outside the edit panel
         if (editPanel && editPanel.classList.contains('open')) {
             // Don't close if clicking on a chart (it will open panel for that chart)
             // Don't close if clicking inside panel or on close button
-            if (!isClickInsidePanel && !isClickOnCloseBtn && !isClickOnChart) {
+            if (!isClickInsidePanel && !isClickOnCloseBtn && !isClickOnChart && !isClickOnRemovreRowBtn) {
+                console.log('closing edit panel');
                 closeEditPanel();
             }
         }
