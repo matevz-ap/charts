@@ -142,6 +142,7 @@ html {
     .edit-panel {
         margin-top: 32px;
         height: calc(100% - 64px);
+        width: calc(100% - 24px);
     }
 }
 
