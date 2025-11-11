@@ -12,6 +12,30 @@ function getEditPanelContent() {
     return document.getElementById('editPanelContent');
 }
 
+// Helper function to check if grid lines are currently displayed
+function getGridLinesDisplay(chartInstance) {
+    // For pie and doughnut charts, there are no grid lines
+    if (chartInstance.config.type === 'pie' || chartInstance.config.type === 'doughnut') {
+        return false;
+    }
+    
+    // Check if scales exist and grid display is set
+    if (chartInstance.options.scales) {
+        const yScale = chartInstance.options.scales.y;
+        const xScale = chartInstance.options.scales.x;
+        
+        // Default is true if not explicitly set to false
+        const yGridDisplay = yScale?.grid?.display !== false;
+        const xGridDisplay = xScale?.grid?.display !== false;
+        
+        // Return true if at least one scale has grid lines enabled
+        return yGridDisplay || xGridDisplay;
+    }
+    
+    // Default to true if scales don't exist (Chart.js default)
+    return true;
+}
+
 export function openEditPanel(chartId) {
     const editPanel = getEditPanel();
     const editPanelContent = getEditPanelContent();
@@ -63,6 +87,15 @@ export function openEditPanel(chartId) {
         <div class="form-group">
             <label><strong>Chart Title:</strong></label>
             <input type="text" id="chartTitleInput" placeholder="Chart Title">
+        </div>
+        <div class="form-group" id="gridLinesGroup" style="${chartInstance.config.type === 'pie' || chartInstance.config.type === 'doughnut' ? 'display: none;' : ''}">
+            <label class="toggle-label">
+                <span><strong>Show Grid Lines:</strong></span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="gridLinesToggle" ${getGridLinesDisplay(chartInstance) ? 'checked' : ''}>
+                    <span class="toggle-slider"></span>
+                </label>
+            </label>
         </div>
         <div class="form-group">
             <label><strong>Chart Data:</strong></label>
@@ -139,9 +172,25 @@ export function openEditPanel(chartId) {
     // Chart type change handler
     document.querySelectorAll('.chart-type-radio').forEach(radio => {
         radio.addEventListener('change', function() {
+            // Show/hide grid lines toggle based on chart type
+            const gridLinesGroup = document.getElementById('gridLinesGroup');
+            const newType = radio.value;
+            if (newType === 'pie' || newType === 'doughnut') {
+                if (gridLinesGroup) gridLinesGroup.style.display = 'none';
+            } else {
+                if (gridLinesGroup) gridLinesGroup.style.display = 'block';
+            }
             applyChartChanges(chartId);
         });
     });
+
+    // Grid lines toggle handler
+    const gridLinesToggle = document.getElementById('gridLinesToggle');
+    if (gridLinesToggle) {
+        gridLinesToggle.addEventListener('change', function() {
+            applyChartChanges(chartId);
+        });
+    }
 
     // Download chart handler
     document.getElementById('downloadChartBtn').addEventListener('click', function() {
@@ -283,10 +332,40 @@ function applyChartChanges(chartId) {
 
     const typeRadio = document.querySelector('input[name="chartType"]:checked');
     const titleInput = document.getElementById('chartTitleInput');
+    const gridLinesToggle = document.getElementById('gridLinesToggle');
     const tableBody = document.getElementById('chartDataTableBody');
 
     // Update chart type
     chartInstance.config.type = typeRadio ? typeRadio.value : 'bar';
+
+    // Update grid lines display
+    const showGridLines = gridLinesToggle ? gridLinesToggle.checked : true;
+    
+    // Only apply grid lines to charts that have scales (bar, line)
+    if (chartInstance.config.type === 'bar' || chartInstance.config.type === 'line') {
+        if (!chartInstance.options.scales) {
+            chartInstance.options.scales = {};
+        }
+        
+        // Initialize x and y scales if they don't exist
+        if (!chartInstance.options.scales.x) {
+            chartInstance.options.scales.x = {};
+        }
+        if (!chartInstance.options.scales.y) {
+            chartInstance.options.scales.y = {};
+        }
+        
+        // Set grid display
+        if (!chartInstance.options.scales.x.grid) {
+            chartInstance.options.scales.x.grid = {};
+        }
+        if (!chartInstance.options.scales.y.grid) {
+            chartInstance.options.scales.y.grid = {};
+        }
+        
+        chartInstance.options.scales.x.grid.display = showGridLines;
+        chartInstance.options.scales.y.grid.display = showGridLines;
+    }
 
     // Read labels, data, and colors from table
     const rows = tableBody.querySelectorAll('tr');

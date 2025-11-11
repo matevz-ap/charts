@@ -98,6 +98,23 @@ export function createChart(chartContainer, onEditClick, chartData = null) {
                         text: chartData.title
                     }
                 } : {})
+            },
+            scales: {
+                ...defaultChartConfig.options.scales,
+                ...(chartData.type === 'bar' || chartData.type === 'line' ? {
+                    x: {
+                        ...defaultChartConfig.options.scales?.x,
+                        grid: {
+                            display: chartData.gridLines !== false // Default to true if not specified
+                        }
+                    },
+                    y: {
+                        ...defaultChartConfig.options.scales?.y,
+                        grid: {
+                            display: chartData.gridLines !== false // Default to true if not specified
+                        }
+                    }
+                } : {})
             }
         }
     } : defaultChartConfig;
@@ -159,6 +176,11 @@ export function createChart(chartContainer, onEditClick, chartData = null) {
         ? backgroundColor.map(rgbaToHex)
         : (chartData?.colors || []);
 
+    // Extract grid lines preference
+    const gridLines = (config.type === 'bar' || config.type === 'line') 
+        ? (config.options.scales?.x?.grid?.display !== false && config.options.scales?.y?.grid?.display !== false)
+        : undefined;
+
     // Save to local storage
     const chartStorageData = {
         id: chartId,
@@ -167,6 +189,7 @@ export function createChart(chartContainer, onEditClick, chartData = null) {
         data: config.data.datasets[0].data,
         colors: colors,
         title: config.options.plugins?.title?.text || '',
+        gridLines: gridLines,
         position: {
             top: wrapper.style.top,
             left: wrapper.style.left
@@ -198,8 +221,9 @@ export function updateChartPosition(chartId, top, left) {
     const width = parseInt(computedStyle.width, 10);
     const height = parseInt(computedStyle.height, 10);
     
-    // Extract colors from chart instance
+    // Extract colors and grid lines from chart instance
     const colors = extractColorsFromChart(chartInstance);
+    const gridLines = extractGridLinesFromChart(chartInstance);
     
     const chartData = {
         id: chartId,
@@ -208,6 +232,7 @@ export function updateChartPosition(chartId, top, left) {
         data: chartInstance.data.datasets[0]?.data || [],
         colors: colors,
         title: chartInstance.options.plugins?.title?.text || '',
+        gridLines: gridLines,
         position: { top, left },
         size: { width, height }
     };
@@ -221,8 +246,9 @@ export function updateChartSize(chartId, width, height) {
     const wrapper = document.querySelector(`[data-chart-id="${chartId}"]`);
     if (!wrapper) return;
     
-    // Extract colors from chart instance
+    // Extract colors and grid lines from chart instance
     const colors = extractColorsFromChart(chartInstance);
+    const gridLines = extractGridLinesFromChart(chartInstance);
     
     const chartData = {
         id: chartId,
@@ -231,6 +257,7 @@ export function updateChartSize(chartId, width, height) {
         data: chartInstance.data.datasets[0]?.data || [],
         colors: colors,
         title: chartInstance.options.plugins?.title?.text || '',
+        gridLines: gridLines,
         position: {
             top: wrapper.style.top,
             left: wrapper.style.left
@@ -238,6 +265,29 @@ export function updateChartSize(chartId, width, height) {
         size: { width, height }
     };
     saveChart(chartId, chartData);
+}
+
+// Helper function to extract grid lines preference from chart instance
+function extractGridLinesFromChart(chartInstance) {
+    // For pie and doughnut charts, grid lines don't apply
+    if (chartInstance.config.type === 'pie' || chartInstance.config.type === 'doughnut') {
+        return undefined;
+    }
+    
+    // Check if scales exist and grid display is set
+    if (chartInstance.options.scales) {
+        const yScale = chartInstance.options.scales.y;
+        const xScale = chartInstance.options.scales.x;
+        
+        // Return true if both scales have grid lines enabled (or not explicitly disabled)
+        const yGridDisplay = yScale?.grid?.display !== false;
+        const xGridDisplay = xScale?.grid?.display !== false;
+        
+        return yGridDisplay && xGridDisplay;
+    }
+    
+    // Default to true if scales don't exist
+    return true;
 }
 
 // Helper function to extract colors from chart instance
@@ -283,8 +333,9 @@ export function updateChartData(chartId) {
     const width = parseInt(computedStyle.width, 10);
     const height = parseInt(computedStyle.height, 10);
 
-    // Extract colors from chart instance
+    // Extract colors and grid lines from chart instance
     const colors = extractColorsFromChart(chartInstance);
+    const gridLines = extractGridLinesFromChart(chartInstance);
 
     const chartData = {
         id: chartId,
@@ -293,6 +344,7 @@ export function updateChartData(chartId) {
         data: chartInstance.data.datasets[0]?.data || [],
         colors: colors,
         title: chartInstance.options.plugins?.title?.text || '',
+        gridLines: gridLines,
         position: {
             top: wrapper.style.top,
             left: wrapper.style.left
