@@ -9,12 +9,12 @@ const LEGACY_WORKSPACE_KEY = "chartContainerPanZoom";
 const MIGRATION_KEY = "charts_indexeddb_migrated";
 
 const defaultData: ChartDatum[] = [
-  { label: "Red", value: 12, color: "#ff6384" },
-  { label: "Blue", value: 19, color: "#36a2eb" },
-  { label: "Yellow", value: 3, color: "#ffce56" },
-  { label: "Green", value: 5, color: "#4bc0c0" },
-  { label: "Purple", value: 2, color: "#9966ff" },
-  { label: "Orange", value: 3, color: "#ff9f40" }
+  { label: "Red", value: 12, color: "#2563eb" },
+  { label: "Blue", value: 19, color: "#60a5fa" },
+  { label: "Yellow", value: 3, color: "#93c5fd" },
+  { label: "Green", value: 5, color: "#bfdbfe" },
+  { label: "Purple", value: 2, color: "#1d4ed8" },
+  { label: "Orange", value: 3, color: "#3b82f6" }
 ];
 
 class ChartsDatabase extends Dexie {
@@ -43,6 +43,7 @@ export function createChartRecord(index: number): ChartRecord {
     dashboardId: DEFAULT_DASHBOARD_ID,
     type: "bar",
     title: "",
+    description: "",
     data: defaultData.map((item) => ({ ...item })),
     gridLines: true,
     position: {
@@ -50,8 +51,8 @@ export function createChartRecord(index: number): ChartRecord {
       left: 30 + index * 20
     },
     size: {
-      width: 400,
-      height: 240
+      width: 520,
+      height: 420
     },
     updatedAt: now
   };
@@ -148,6 +149,7 @@ function legacyChartToRecord(chart: LegacyChartRecord): ChartRecord {
     dashboardId: DEFAULT_DASHBOARD_ID,
     type: normalizeChartType(chart.type),
     title: chart.title ?? "",
+    description: chart.description ?? "",
     gridLines: chart.gridLines !== false,
     data: Array.from({ length }, (_, index) => ({
       label: labels[index] ?? `Item ${index + 1}`,
@@ -159,8 +161,8 @@ function legacyChartToRecord(chart: LegacyChartRecord): ChartRecord {
       left: parsePixelValue(chart.position?.left, 30)
     },
     size: {
-      width: numericOrDefault(chart.size?.width, 400),
-      height: numericOrDefault(chart.size?.height, 240)
+      width: numericOrDefault(chart.size?.width, 520),
+      height: numericOrDefault(chart.size?.height, 320)
     },
     updatedAt: Date.now()
   };

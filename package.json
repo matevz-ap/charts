@@ -14,7 +14,6 @@
     "deploy:worker": "npm run build && WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy"
   },
   "dependencies": {
-    "@lucide/svelte": "^1.17.0",
     "@sveltejs/adapter-static": "^3.0.8",
     "@sveltejs/kit": "^2.22.0",
     "@sveltejs/vite-plugin-svelte": "^5.1.0",
@@ -30,6 +29,7 @@
   },
   "devDependencies": {
     "@internationalized/date": "^3.12.2",
+    "@lucide/svelte": "^1.17.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/svelte": "^5.2.8",
     "@types/d3-scale": "^4.0.9",

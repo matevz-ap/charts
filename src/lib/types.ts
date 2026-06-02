@@ -11,6 +11,7 @@ export type ChartRecord = {
   dashboardId: string;
   type: ChartType;
   title: string;
+  description: string;
   data: ChartDatum[];
   gridLines: boolean;
   position: {
@@ -39,6 +40,7 @@ export type LegacyChartRecord = {
   data?: number[];
   colors?: string[];
   title?: string;
+  description?: string;
   gridLines?: boolean;
   position?: {
     top?: string;

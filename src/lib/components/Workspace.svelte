@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
+  import { Crosshair, RotateCcw, ZoomIn, ZoomOut } from "@lucide/svelte";
   import DraggableChart from "$lib/components/DraggableChart.svelte";
   import type { ChartRecord, WorkspaceState } from "$lib/types";
   import { dashboard } from "$lib/stores/dashboard";
@@ -18,6 +19,7 @@
   let wheelPersistTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
 
   $: transform = `translate(${workspace.panX}px, ${workspace.panY}px) scale(${workspace.zoom})`;
+  $: zoomPercent = Math.round(workspace.zoom * 100);
 
   function beginPan(event: MouseEvent) {
     const target = event.target as HTMLElement;
@@ -85,6 +87,32 @@
     }));
   }
 
+  function resetZoom() {
+    dashboard.updateWorkspace((current) => ({
+      ...current,
+      zoom: 1
+    }));
+  }
+
+  function zoomBy(factor: number) {
+    const rect = workspaceElement.getBoundingClientRect();
+    const originX = rect.width / 2;
+    const originY = rect.height / 2;
+
+    dashboard.updateWorkspace((current) => {
+      const zoom = Math.max(0.1, Math.min(5, current.zoom * factor));
+      const worldX = (originX - current.panX) / current.zoom;
+      const worldY = (originY - current.panY) / current.zoom;
+
+      return {
+        ...current,
+        zoom,
+        panX: originX - worldX * zoom,
+        panY: originY - worldY * zoom
+      };
+    });
+  }
+
   function scheduleWorkspacePersist() {
     if (wheelPersistTimeout) {
       clearTimeout(wheelPersistTimeout);
@@ -127,7 +155,20 @@
       </div>
     </div>
   {/if}
-  <Button variant="secondary" type="button" style="position:absolute;left:12px;bottom:12px;z-index:40" onclick={resetView}>
-    Reset view
-  </Button>
+  <div class="workspace-controls" aria-label="Workspace controls">
+    <Button variant="ghost" size="icon" type="button" aria-label="Zoom out" title="Zoom out" onclick={() => zoomBy(0.86)}>
+      <ZoomOut size={16} />
+    </Button>
+    <span class="zoom-readout" aria-label={`Zoom ${zoomPercent}%`}>{zoomPercent}%</span>
+    <Button variant="ghost" size="icon" type="button" aria-label="Zoom in" title="Zoom in" onclick={() => zoomBy(1.16)}>
+      <ZoomIn size={16} />
+    </Button>
+    <span class="control-divider" aria-hidden="true"></span>
+    <Button variant="ghost" size="icon" type="button" aria-label="Reset zoom" title="Reset zoom" onclick={resetZoom}>
+      <RotateCcw size={16} />
+    </Button>
+    <Button variant="ghost" size="icon" type="button" aria-label="Reset view" title="Reset view" onclick={resetView}>
+      <Crosshair size={16} />
+    </Button>
+  </div>
 </div>

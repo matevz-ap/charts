@@ -22,6 +22,40 @@ vi.mock("$lib/components/ui/switch", async () => {
   };
 });
 
+vi.mock("$lib/components/ui/tabs", async () => {
+  const Root = (await import("$lib/test/tabs-root-stub.svelte")).default;
+  const List = (await import("$lib/test/tabs-list-stub.svelte")).default;
+  const Trigger = (await import("$lib/test/tabs-trigger-stub.svelte")).default;
+  const Content = (await import("$lib/test/tabs-content-stub.svelte")).default;
+
+  return {
+    Root,
+    List,
+    Trigger,
+    Content
+  };
+});
+
+vi.mock("$lib/components/ui/sheet", async () => {
+  const Root = (await import("$lib/test/sheet-root-stub.svelte")).default;
+  const Content = (await import("$lib/test/sheet-content-stub.svelte")).default;
+  const Header = (await import("$lib/test/sheet-header-stub.svelte")).default;
+  const Footer = (await import("$lib/test/sheet-footer-stub.svelte")).default;
+  const Title = (await import("$lib/test/sheet-title-stub.svelte")).default;
+  const Description = (await import("$lib/test/sheet-description-stub.svelte")).default;
+  const Close = (await import("$lib/test/sheet-close-stub.svelte")).default;
+
+  return {
+    Root,
+    Content,
+    Header,
+    Footer,
+    Title,
+    Description,
+    Close
+  };
+});
+
 describe("dashboard page", () => {
   beforeEach(async () => {
     localStorage.clear();

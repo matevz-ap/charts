@@ -56,7 +56,7 @@ describe("dashboard persistence", () => {
     expect(chart.dashboardId).toBe(DEFAULT_DASHBOARD_ID);
     expect(chart.type).toBe("bar");
     expect(chart.position).toEqual({ top: 80, left: 70 });
-    expect(chart.size).toEqual({ width: 400, height: 240 });
+    expect(chart.size).toEqual({ width: 520, height: 420 });
     expect(chart.data).toHaveLength(6);
   });
 
