@@ -1,7 +1,11 @@
 <script lang="ts">
-  import { Plus, Trash2 } from "@lucide/svelte";
+  import { Plus, Sparkles, Trash2 } from "@lucide/svelte";
   import type { ChartDatum, ChartRecord, ChartType } from "$lib/types";
   import { dashboard } from "$lib/stores/dashboard";
+  import {
+    extractChartDataFromText,
+    type ExtractionProgress,
+  } from "$lib/chartDataExtraction";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Switch } from "$lib/components/ui/switch";
@@ -9,6 +13,11 @@
   import * as Sheet from "$lib/components/ui/sheet";
 
   export let chart: ChartRecord | null = null;
+
+  let sourceText = "";
+  let extractionError = "";
+  let extractionStatus = "";
+  let isExtracting = false;
 
   const chartTypes: Array<{ value: ChartType; label: string }> = [
     { value: "bar", label: "Bar" },
@@ -57,7 +66,61 @@
     dashboard.deleteChart(chart.id);
   }
 
+  function applyExtractedData(data: ChartDatum[]) {
+    updateChart((current) => ({
+      ...current,
+      data,
+    }));
+  }
+
+  function formatExtractionStatus(progress: ExtractionProgress) {
+    if (
+      (progress.status === "progress" || progress.status === "progress_total") &&
+      typeof progress.progress === "number"
+    ) {
+      return `Loading model… ${Math.round(progress.progress)}%`;
+    }
+
+    if (progress.status === "download" && progress.file) {
+      return `Downloading ${progress.file}…`;
+    }
+
+    if (progress.status === "ready") {
+      return "Model ready. Extracting data…";
+    }
+
+    return "Extracting chart data…";
+  }
+
+  async function extractFromText() {
+    if (!chart || isExtracting) return;
+
+    extractionError = "";
+    extractionStatus = "Preparing model…";
+    isExtracting = true;
+
+    try {
+      const data = await extractChartDataFromText(sourceText, (progress) => {
+        extractionStatus = formatExtractionStatus(progress);
+      });
+      applyExtractedData(data);
+      extractionStatus = `Extracted ${data.length} data point${data.length === 1 ? "" : "s"}.`;
+    } catch (error) {
+      extractionError =
+        error instanceof Error ? error.message : "Could not extract chart data.";
+      extractionStatus = "";
+    } finally {
+      isExtracting = false;
+    }
+  }
+
   $: inspectorOpen = Boolean(chart);
+  $: if (!chart) {
+    sourceText = "";
+    extractionError = "";
+    extractionStatus = "";
+    isExtracting = false;
+  }
 </script>
 
 <Sheet.Root
@@ -136,6 +199,39 @@
                   }))}
               />
             </div>
+          {/if}
+        </section>
+
+        <section class="inspector-section">
+          <div class="section-heading">
+            <span class="label">Extract from text</span>
+          </div>
+          <label class="field">
+            <span class="label">Source text</span>
+            <textarea
+              class="text-source"
+              aria-label="Source text for chart extraction"
+              placeholder="Paste text with labels and values, e.g. January revenue was 12,400€, February was 15,100€…"
+              bind:value={sourceText}
+              rows={5}
+              disabled={isExtracting}
+            ></textarea>
+          </label>
+          <div class="extract-actions">
+            <Button
+              type="button"
+              disabled={isExtracting || !sourceText.trim()}
+              onclick={extractFromText}
+            >
+              <Sparkles size={16} />
+              {isExtracting ? "Extracting…" : "Extract data"}
+            </Button>
+          </div>
+          {#if extractionStatus}
+            <p class="field-hint">{extractionStatus}</p>
+          {/if}
+          {#if extractionError}
+            <p class="extract-error">{extractionError}</p>
           {/if}
         </section>
 
