@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "worker:dev": "npm run build && WRANGLER_LOG_PATH=.wrangler/logs wrangler dev",
+    "deploy": "WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy",
+    "deploy:worker": "npm run build && WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy"
   },
   "dependencies": {
     "@lucide/svelte": "^1.17.0",
@@ -37,6 +40,7 @@
     "layerchart": "^2.0.0-next.48",
     "svelte-check": "^4.2.1",
     "typescript": "^5.8.3",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "wrangler": "^4.97.0"
   }
 }
