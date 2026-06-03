@@ -56,6 +56,10 @@ vi.mock("$lib/components/ui/sheet", async () => {
   };
 });
 
+vi.mock("$lib/components/ChartTextExtractDialog.svelte", async () => ({
+  default: (await import("$lib/test/chart-text-extract-dialog-stub.svelte")).default
+}));
+
 describe("dashboard page", () => {
   beforeEach(async () => {
     localStorage.clear();

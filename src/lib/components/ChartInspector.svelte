@@ -2,10 +2,7 @@
   import { Plus, Sparkles, Trash2 } from "@lucide/svelte";
   import type { ChartDatum, ChartRecord, ChartType } from "$lib/types";
   import { dashboard } from "$lib/stores/dashboard";
-  import {
-    extractChartDataFromText,
-    type ExtractionProgress,
-  } from "$lib/chartDataExtraction";
+  import ChartTextExtractDialog from "$lib/components/ChartTextExtractDialog.svelte";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Switch } from "$lib/components/ui/switch";
@@ -14,10 +11,7 @@
 
   export let chart: ChartRecord | null = null;
 
-  let sourceText = "";
-  let extractionError = "";
-  let extractionStatus = "";
-  let isExtracting = false;
+  let extractDialogOpen = false;
 
   const chartTypes: Array<{ value: ChartType; label: string }> = [
     { value: "bar", label: "Bar" },
@@ -73,53 +67,9 @@
     }));
   }
 
-  function formatExtractionStatus(progress: ExtractionProgress) {
-    if (
-      (progress.status === "progress" || progress.status === "progress_total") &&
-      typeof progress.progress === "number"
-    ) {
-      return `Loading model… ${Math.round(progress.progress)}%`;
-    }
-
-    if (progress.status === "download" && progress.file) {
-      return `Downloading ${progress.file}…`;
-    }
-
-    if (progress.status === "ready") {
-      return "Model ready. Extracting data…";
-    }
-
-    return "Extracting chart data…";
-  }
-
-  async function extractFromText() {
-    if (!chart || isExtracting) return;
-
-    extractionError = "";
-    extractionStatus = "Preparing model…";
-    isExtracting = true;
-
-    try {
-      const data = await extractChartDataFromText(sourceText, (progress) => {
-        extractionStatus = formatExtractionStatus(progress);
-      });
-      applyExtractedData(data);
-      extractionStatus = `Extracted ${data.length} data point${data.length === 1 ? "" : "s"}.`;
-    } catch (error) {
-      extractionError =
-        error instanceof Error ? error.message : "Could not extract chart data.";
-      extractionStatus = "";
-    } finally {
-      isExtracting = false;
-    }
-  }
-
   $: inspectorOpen = Boolean(chart);
   $: if (!chart) {
-    sourceText = "";
-    extractionError = "";
-    extractionStatus = "";
-    isExtracting = false;
+    extractDialogOpen = false;
   }
 </script>
 
@@ -204,49 +154,27 @@
 
         <section class="inspector-section">
           <div class="section-heading">
-            <span class="label">Extract from text</span>
-          </div>
-          <label class="field">
-            <span class="label">Source text</span>
-            <textarea
-              class="text-source"
-              aria-label="Source text for chart extraction"
-              placeholder="Paste text with labels and values, e.g. January revenue was 12,400€, February was 15,100€…"
-              bind:value={sourceText}
-              rows={5}
-              disabled={isExtracting}
-            ></textarea>
-          </label>
-          <div class="extract-actions">
-            <Button
-              type="button"
-              disabled={isExtracting || !sourceText.trim()}
-              onclick={extractFromText}
-            >
-              <Sparkles size={16} />
-              {isExtracting ? "Extracting…" : "Extract data"}
-            </Button>
-          </div>
-          {#if extractionStatus}
-            <p class="field-hint">{extractionStatus}</p>
-          {/if}
-          {#if extractionError}
-            <p class="extract-error">{extractionError}</p>
-          {/if}
-        </section>
-
-        <section class="inspector-section">
-          <div class="section-heading">
             <span class="label">Chart data</span>
-            <Button
-              variant="secondary"
-              size="icon"
-              type="button"
-              aria-label="Add data row"
-              onclick={addRow}
-            >
-              <Plus size={16} />
-            </Button>
+            <div class="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="icon"
+                type="button"
+                aria-label="Extract from text"
+                onclick={() => (extractDialogOpen = true)}
+              >
+                <Sparkles size={16} />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                type="button"
+                aria-label="Add data row"
+                onclick={addRow}
+              >
+                <Plus size={16} />
+              </Button>
+            </div>
           </div>
           <div class="data-editor">
             <div class="data-header" aria-hidden="true">
@@ -312,6 +240,11 @@
           {/snippet}
         </Sheet.Close>
       </Sheet.Footer>
+
+      <ChartTextExtractDialog
+        bind:open={extractDialogOpen}
+        onExtract={applyExtractedData}
+      />
     </Sheet.Content>
   {/if}
 </Sheet.Root>

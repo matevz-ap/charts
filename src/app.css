@@ -367,50 +367,6 @@ button {
   align-items: center;
 }
 
-.text-source {
-  width: 100%;
-  min-height: 112px;
-  resize: vertical;
-  border: 1px solid var(--input);
-  border-radius: calc(var(--radius) - 2px);
-  background: var(--card);
-  padding: 10px 12px;
-  color: var(--foreground);
-  font-size: 14px;
-  line-height: 1.45;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.text-source:focus-visible {
-  border-color: var(--ring);
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
-}
-
-.text-source:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.text-source::placeholder {
-  color: var(--muted-foreground);
-}
-
-.extract-actions {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.extract-error {
-  margin: 0;
-  color: var(--destructive);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .color-input {
   width: 42px;
   height: 32px;

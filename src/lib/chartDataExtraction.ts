@@ -1,38 +1,8 @@
 import type { ChartDatum } from "$lib/types";
 import { colorForIndex } from "$lib/chartColors";
-import ChartDataExtractorWorker from "$lib/workers/chartDataExtractor.worker?worker";
-
-export type ExtractionProgress = {
-  status: string;
-  progress?: number;
-  file?: string;
-};
-
-const EXTRACTION_PROMPT = `Extract JSON chart data from text. Use fields label and value.
-
-Example:
-Text: Q1 sales 100, Q2 sales 200
-JSON: [{"label":"Q1","value":100},{"label":"Q2","value":200}]
-
-Text: {{TEXT}}
-JSON:`;
 
 const LABEL_KEYS = ["label", "name", "category", "item", "month", "period", "key"];
 const VALUE_KEYS = ["value", "amount", "count", "total", "revenue", "sales", "number", "val"];
-
-let worker: Worker | null = null;
-let workerReady: Promise<void> | null = null;
-
-function getWorker(): Worker {
-  if (!worker) {
-    worker = new ChartDataExtractorWorker();
-  }
-  return worker;
-}
-
-function buildPrompt(text: string): string {
-  return EXTRACTION_PROMPT.replace("{{TEXT}}", text.trim());
-}
 
 function parseNumericValue(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -203,6 +173,66 @@ function parseLooseObjectChunks(rawText: string): ChartDatum[] | null {
   return data.length > 0 ? data : null;
 }
 
+const NOISE_LABELS = new Set([
+  "revenue",
+  "sales",
+  "amount",
+  "total",
+  "in",
+  "for",
+  "during",
+  "year",
+  "the",
+  "and",
+]);
+
+function isNoiseLabel(label: string): boolean {
+  return NOISE_LABELS.has(label.toLowerCase());
+}
+
+function isYearContextRow(label: string, value: number): boolean {
+  const normalized = label.toLowerCase();
+  return (
+    ["in", "for", "during", "year"].includes(normalized) &&
+    value >= 1900 &&
+    value <= 2100
+  );
+}
+
+function finalizeChartData(data: ChartDatum[]): ChartDatum[] {
+  return data
+    .filter((item) => !isNoiseLabel(item.label) && !isYearContextRow(item.label, item.value))
+    .map((item, index) => ({
+      ...item,
+      color: colorForIndex(index),
+    }));
+}
+
+function extractPairsFromSourceText(sourceText: string): Array<{ label: string; value: number }> {
+  const pairs = new Map<string, { label: string; value: number }>();
+
+  const patterns = [
+    /([A-Za-z][A-Za-z0-9]*)\s+(?:revenue|sales|amount)\s+was\s+([\d,]+)/gi,
+    /\b([A-Za-z][A-Za-z0-9]{2,})\s+was\s+([\d,]+)/gi,
+    /([A-Za-z][A-Za-z0-9]{2,}):\s*([\d,]+)/g,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of sourceText.matchAll(pattern)) {
+      const label = normalizeLabel(match[1]);
+      const value = parseNumericValue(match[2]);
+
+      if (!label || value === null || isNoiseLabel(label) || isYearContextRow(label, value)) {
+        continue;
+      }
+
+      pairs.set(label.toLowerCase(), { label, value });
+    }
+  }
+
+  return [...pairs.values()];
+}
+
 function splitSourceSegments(sourceText: string): string[] {
   return sourceText
     .split(/;|\n/)
@@ -241,138 +271,64 @@ function parseLabelValueSegment(segment: string): { label: string; value: number
 }
 
 export function parseChartDataFromSourceText(sourceText: string): ChartDatum[] {
+  const globalPairs = extractPairsFromSourceText(sourceText);
+
+  if (globalPairs.length > 0) {
+    return finalizeChartData(
+      globalPairs.map((item) => ({
+        label: item.label,
+        value: item.value,
+        color: "#2563eb",
+      })),
+    );
+  }
+
   const segments = splitSourceSegments(sourceText);
 
   const data = segments
     .map((segment) => parseLabelValueSegment(segment))
     .filter((item): item is { label: string; value: number } => item !== null)
-    .map((item, index) => ({
+    .filter((item) => !isNoiseLabel(item.label) && !isYearContextRow(item.label, item.value))
+    .map((item) => ({
       label: item.label,
       value: item.value,
-      color: colorForIndex(index),
+      color: "#2563eb",
     }));
 
   if (data.length === 0) {
     throw new Error("Could not find label/value pairs in the pasted text.");
   }
 
-  return data;
+  return finalizeChartData(data);
 }
 
-export function parseExtractedChartData(rawText: string, sourceText?: string): ChartDatum[] {
-  for (const candidate of collectJsonCandidates(rawText)) {
-    const parsed = parseArrayCandidate(candidate);
-    if (parsed) {
-      return parsed;
-    }
-  }
-
-  const looseObjects = parseLooseObjectChunks(rawText);
-  if (looseObjects) {
-    return looseObjects;
-  }
-
-  if (sourceText?.trim()) {
-    return parseChartDataFromSourceText(sourceText);
-  }
-
-  const preview = rawText.trim().slice(0, 120);
-  throw new Error(
-    preview
-      ? `Could not parse chart data. Model returned: ${preview}${rawText.length > 120 ? "…" : ""}`
-      : "Could not parse chart data from model output.",
-  );
-}
-
-export async function extractChartDataFromText(
-  text: string,
-  onProgress?: (progress: ExtractionProgress) => void,
-): Promise<ChartDatum[]> {
+export function parseExtractedChartData(text: string): ChartDatum[] {
   const normalizedText = text.trim();
   if (!normalizedText) {
     throw new Error("Paste some text to extract chart data.");
   }
 
-  const prompt = buildPrompt(normalizedText);
-  const activeWorker = getWorker();
-
-  return new Promise((resolve, reject) => {
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data as
-        | { type: "progress"; data: ExtractionProgress }
-        | { type: "complete"; generatedText: string }
-        | { type: "error"; message: string };
-
-      if (message.type === "progress") {
-        onProgress?.(message.data);
-        return;
+  for (const candidate of collectJsonCandidates(normalizedText)) {
+    const parsed = parseArrayCandidate(candidate);
+    if (parsed) {
+      const cleaned = finalizeChartData(parsed);
+      if (cleaned.length > 0) {
+        return cleaned;
       }
+    }
+  }
 
-      activeWorker.removeEventListener("message", handleMessage);
-      activeWorker.removeEventListener("error", handleError);
+  const looseObjects = parseLooseObjectChunks(normalizedText);
+  if (looseObjects) {
+    const cleaned = finalizeChartData(looseObjects);
+    if (cleaned.length > 0) {
+      return cleaned;
+    }
+  }
 
-      if (message.type === "error") {
-        reject(new Error(message.message));
-        return;
-      }
-
-      try {
-        resolve(parseExtractedChartData(message.generatedText, normalizedText));
-      } catch (error) {
-        reject(error instanceof Error ? error : new Error("Failed to parse extracted data."));
-      }
-    };
-
-    const handleError = () => {
-      activeWorker.removeEventListener("message", handleMessage);
-      activeWorker.removeEventListener("error", handleError);
-      reject(new Error("Chart data extraction worker failed."));
-    };
-
-    activeWorker.addEventListener("message", handleMessage);
-    activeWorker.addEventListener("error", handleError);
-    activeWorker.postMessage({ type: "extract", prompt });
-  });
+  return parseChartDataFromSourceText(normalizedText);
 }
 
-export function preloadChartDataExtractor(onProgress?: (progress: ExtractionProgress) => void) {
-  workerReady ??= new Promise((resolve, reject) => {
-    const activeWorker = getWorker();
-
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data as
-        | { type: "progress"; data: ExtractionProgress }
-        | { type: "ready" }
-        | { type: "error"; message: string };
-
-      if (message.type === "progress") {
-        onProgress?.(message.data);
-        return;
-      }
-
-      activeWorker.removeEventListener("message", handleMessage);
-      activeWorker.removeEventListener("error", handleError);
-
-      if (message.type === "error") {
-        workerReady = null;
-        reject(new Error(message.message));
-        return;
-      }
-
-      resolve();
-    };
-
-    const handleError = () => {
-      activeWorker.removeEventListener("message", handleMessage);
-      activeWorker.removeEventListener("error", handleError);
-      workerReady = null;
-      reject(new Error("Chart data extraction worker failed to initialize."));
-    };
-
-    activeWorker.addEventListener("message", handleMessage);
-    activeWorker.addEventListener("error", handleError);
-    activeWorker.postMessage({ type: "preload" });
-  });
-
-  return workerReady;
+export function extractChartDataFromText(text: string): ChartDatum[] {
+  return parseExtractedChartData(text);
 }

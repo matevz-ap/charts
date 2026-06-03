@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractChartDataFromText,
   parseChartDataFromSourceText,
   parseExtractedChartData,
 } from "$lib/chartDataExtraction";
@@ -54,11 +55,10 @@ Here is the data:
     ]);
   });
 
-  it("falls back to source text parsing when model output is unusable", () => {
-    const sourceText =
-      "January revenue was 12,400€, February was 15,100€, March was 13,900€.";
-
-    const result = parseExtractedChartData("not valid json at all", sourceText);
+  it("parses revenue sentences when JSON is not present", () => {
+    const result = parseExtractedChartData(
+      "January revenue was 12,400€, February was 15,100€, March was 13,900€.",
+    );
 
     expect(result).toEqual([
       { label: "January", value: 12400, color: "#2563eb" },
@@ -68,8 +68,16 @@ Here is the data:
   });
 
   it("throws when no valid rows are found", () => {
-    expect(() => parseExtractedChartData("not json")).toThrow(
-      "Could not parse chart data. Model returned: not json",
+    expect(() => parseExtractedChartData("not parseable text")).toThrow(
+      "Could not find label/value pairs in the pasted text.",
+    );
+  });
+});
+
+describe("extractChartDataFromText", () => {
+  it("rejects empty input", () => {
+    expect(() => extractChartDataFromText("   ")).toThrow(
+      "Paste some text to extract chart data.",
     );
   });
 });
@@ -92,6 +100,17 @@ describe("parseChartDataFromSourceText", () => {
       { label: "North", value: 42, color: "#2563eb" },
       { label: "South", value: 18, color: "#60a5fa" },
       { label: "East", value: 27, color: "#93c5fd" },
+    ]);
+  });
+
+  it("ignores year prefixes and extracts month revenue pairs", () => {
+    const result = parseChartDataFromSourceText(
+      "In 2024, January revenue was 12,000 and February revenue was 15,000.",
+    );
+
+    expect(result).toEqual([
+      { label: "January", value: 12000, color: "#2563eb" },
+      { label: "February", value: 15000, color: "#60a5fa" },
     ]);
   });
 });
